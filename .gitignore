@@ -1,0 +1,22 @@
+# Node / Next.js outputs
+node_modules
+.next
+out
+.pnpm-store
+tsconfig.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+
+# Prisma local database artifacts
+prisma/dev.db
+prisma/dev.db-journal
+
+# Python caches
+__pycache__
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,197 @@
+{
+  "updatedAt": "2026-07-16T19:00:00.000Z",
+  "source": "Seed snapshot shaped like U.S. Census ACS 1-year metro data",
+  "regions": [
+    {
+      "id": "austin-tx",
+      "cbsaCode": "12420",
+      "name": "Austin",
+      "state": "TX",
+      "populationLabel": "Large metro"
+    },
+    {
+      "id": "miami-fl",
+      "cbsaCode": "33100",
+      "name": "Miami",
+      "state": "FL",
+      "populationLabel": "Large metro"
+    },
+    {
+      "id": "san-diego-ca",
+      "cbsaCode": "41740",
+      "name": "San Diego",
+      "state": "CA",
+      "populationLabel": "Large metro"
+    },
+    {
+      "id": "seattle-wa",
+      "cbsaCode": "42660",
+      "name": "Seattle",
+      "state": "WA",
+      "populationLabel": "Large metro"
+    }
+  ],
+  "observations": [
+    {
+      "regionId": "austin-tx",
+      "date": "2021-01-01T00:00:00.000Z",
+      "medianRent": 1468,
+      "medianHomeValue": 430700,
+      "medianIncome": 89800,
+      "vacancyRate": 7.9,
+      "affordabilityPressure": 19.61
+    },
+    {
+      "regionId": "austin-tx",
+      "date": "2022-01-01T00:00:00.000Z",
+      "medianRent": 1569,
+      "medianHomeValue": 494200,
+      "medianIncome": 95400,
+      "vacancyRate": 7.1,
+      "affordabilityPressure": 19.74
+    },
+    {
+      "regionId": "austin-tx",
+      "date": "2023-01-01T00:00:00.000Z",
+      "medianRent": 1645,
+      "medianHomeValue": 473900,
+      "medianIncome": 99700,
+      "vacancyRate": 6.8,
+      "affordabilityPressure": 19.80
+    },
+    {
+      "regionId": "austin-tx",
+      "date": "2024-01-01T00:00:00.000Z",
+      "medianRent": 1688,
+      "medianHomeValue": 462500,
+      "medianIncome": 103500,
+      "vacancyRate": 6.5,
+      "affordabilityPressure": 19.57
+    },
+    {
+      "regionId": "miami-fl",
+      "date": "2021-01-01T00:00:00.000Z",
+      "medianRent": 1547,
+      "medianHomeValue": 385300,
+      "medianIncome": 67600,
+      "vacancyRate": 7.2,
+      "affordabilityPressure": 27.46
+    },
+    {
+      "regionId": "miami-fl",
+      "date": "2022-01-01T00:00:00.000Z",
+      "medianRent": 1712,
+      "medianHomeValue": 443500,
+      "medianIncome": 70800,
+      "vacancyRate": 6.9,
+      "affordabilityPressure": 29.02
+    },
+    {
+      "regionId": "miami-fl",
+      "date": "2023-01-01T00:00:00.000Z",
+      "medianRent": 1848,
+      "medianHomeValue": 498900,
+      "medianIncome": 74200,
+      "vacancyRate": 6.4,
+      "affordabilityPressure": 29.89
+    },
+    {
+      "regionId": "miami-fl",
+      "date": "2024-01-01T00:00:00.000Z",
+      "medianRent": 1924,
+      "medianHomeValue": 533700,
+      "medianIncome": 76900,
+      "vacancyRate": 6.1,
+      "affordabilityPressure": 30.02
+    },
+    {
+      "regionId": "san-diego-ca",
+      "date": "2021-01-01T00:00:00.000Z",
+      "medianRent": 1798,
+      "medianHomeValue": 699400,
+      "medianIncome": 88900,
+      "vacancyRate": 4.5,
+      "affordabilityPressure": 24.27
+    },
+    {
+      "regionId": "san-diego-ca",
+      "date": "2022-01-01T00:00:00.000Z",
+      "medianRent": 1936,
+      "medianHomeValue": 784300,
+      "medianIncome": 94200,
+      "vacancyRate": 4.2,
+      "affordabilityPressure": 24.66
+    },
+    {
+      "regionId": "san-diego-ca",
+      "date": "2023-01-01T00:00:00.000Z",
+      "medianRent": 2042,
+      "medianHomeValue": 815800,
+      "medianIncome": 97800,
+      "vacancyRate": 4.0,
+      "affordabilityPressure": 25.06
+    },
+    {
+      "regionId": "san-diego-ca",
+      "date": "2024-01-01T00:00:00.000Z",
+      "medianRent": 2125,
+      "medianHomeValue": 847500,
+      "medianIncome": 101600,
+      "vacancyRate": 3.8,
+      "affordabilityPressure": 25.10
+    },
+    {
+      "regionId": "seattle-wa",
+      "date": "2021-01-01T00:00:00.000Z",
+      "medianRent": 1718,
+      "medianHomeValue": 667900,
+      "medianIncome": 96800,
+      "vacancyRate": 5.3,
+      "affordabilityPressure": 21.30
+    },
+    {
+      "regionId": "seattle-wa",
+      "date": "2022-01-01T00:00:00.000Z",
+      "medianRent": 1812,
+      "medianHomeValue": 734800,
+      "medianIncome": 102400,
+      "vacancyRate": 5.0,
+      "affordabilityPressure": 21.23
+    },
+    {
+      "regionId": "seattle-wa",
+      "date": "2023-01-01T00:00:00.000Z",
+      "medianRent": 1898,
+      "medianHomeValue": 756900,
+      "medianIncome": 106800,
+      "vacancyRate": 4.8,
+      "affordabilityPressure": 21.33
+    },
+    {
+      "regionId": "seattle-wa",
+      "date": "2024-01-01T00:00:00.000Z",
+      "medianRent": 1976,
+      "medianHomeValue": 781200,
+      "medianIncome": 110500,
+      "vacancyRate": 4.6,
+      "affordabilityPressure": 21.46
+    }
+  ],
+  "insights": [
+    {
+      "id": "highest-rent-burden",
+      "title": "Miami has the highest current rent burden in the tracked metros.",
+      "detail": "Its latest rent burden is 30.0% of median household income, which makes the affordability story easier to interpret than raw rent alone."
+    },
+    {
+      "id": "fastest-income-growth",
+      "title": "Seattle shows the strongest income increase across the current ACS window.",
+      "detail": "This is a good example of how normalized yearly observations let you compute trends without changing the source fetch logic."
+    },
+    {
+      "id": "tightest-vacancy",
+      "title": "San Diego currently has the tightest vacancy rate in this metro set.",
+      "detail": "Vacancy rate is an honest ACS-backed supply signal for the MVP, while active listing inventory would require an additional source family."
+    }
+  ]
+}

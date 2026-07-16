@@ -1,0 +1,42 @@
+// Prisma defines the relational storage contract that the dashboard API reads from.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Region {
+  id              String              @id
+  cbsaCode        String              @unique
+  name            String
+  state           String
+  populationLabel String
+  observations    MetricObservation[]
+}
+
+model MetricObservation {
+  id                    String   @id @default(cuid())
+  regionId              String
+  observationDate       DateTime
+  medianRent            Float
+  medianHomeValue       Float
+  medianIncome          Float
+  vacancyRate           Float
+  affordabilityPressure Float
+  region                Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([regionId, observationDate])
+  @@index([observationDate])
+}
+
+model RefreshRun {
+  id         String   @id @default(cuid())
+  sourceName String
+  runStatus  String
+  startedAt  DateTime
+  finishedAt DateTime?
+  notes      String?
+}
