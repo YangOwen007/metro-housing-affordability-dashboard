@@ -10,7 +10,15 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { getMetricChange, getObservationsForRegion, metricConfig } from "@/lib/dashboard-data";
+import {
+  buildComparisonSeries,
+  comparisonPalette,
+  getAvailableYears,
+  getLatestObservationInRange,
+  getMetricChange,
+  getObservationsForRegion,
+  metricConfig
+} from "@/lib/dashboard-data";
 import type { DashboardDataset, MetricKey } from "@/types/dashboard";
 
 type DashboardShellProps = {
@@ -27,18 +35,29 @@ const metricOptions: MetricKey[] = [
 
 // This component owns the interactive state so the server-rendered page can stay simple.
 export function DashboardShell({ dataset }: DashboardShellProps) {
+  const availableYears = getAvailableYears(dataset);
+  const defaultRegionIds = dataset.regions.slice(0, 2).map((region) => region.id);
   const [selectedRegionId, setSelectedRegionId] = useState(dataset.regions[0]?.id ?? "");
+  const [comparisonRegionIds, setComparisonRegionIds] = useState<string[]>(defaultRegionIds);
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("medianRent");
+  const [startYear, setStartYear] = useState<number>(availableYears[0] ?? 2021);
+  const [endYear, setEndYear] = useState<number>(availableYears.at(-1) ?? 2024);
 
   const activeRegion = dataset.regions.find((region) => region.id === selectedRegionId) ?? dataset.regions[0];
-  const activeSeries = activeRegion ? getObservationsForRegion(dataset, activeRegion.id) : [];
+  const activeSeries = buildComparisonSeries(
+    dataset,
+    comparisonRegionIds,
+    startYear,
+    endYear,
+    selectedMetric
+  );
   const summaryCards = metricOptions
     .map((metric) => {
       if (!activeRegion) {
         return null;
       }
 
-      const change = getMetricChange(dataset, activeRegion.id, metric);
+      const change = getMetricChange(dataset, activeRegion.id, metric, startYear, endYear);
 
       if (!change) {
         return null;
@@ -50,6 +69,25 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
       };
     })
     .filter(Boolean);
+  const comparisonRegions = comparisonRegionIds
+    .map((regionId) => dataset.regions.find((region) => region.id === regionId))
+    .filter(Boolean);
+
+  function handleComparisonSelection(regionId: string, checked: boolean) {
+    setComparisonRegionIds((currentRegionIds) => {
+      if (checked) {
+        return currentRegionIds.includes(regionId)
+          ? currentRegionIds
+          : [...currentRegionIds, regionId].slice(0, 2);
+      }
+
+      if (currentRegionIds.length === 1) {
+        return currentRegionIds;
+      }
+
+      return currentRegionIds.filter((currentRegionId) => currentRegionId !== regionId);
+    });
+  }
 
   return (
     <main className="page-shell">
@@ -109,12 +147,91 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
           </select>
         </div>
 
-        <div className="selection-context">
+        <div className="field-group">
+          <label htmlFor="start-year">Year window</label>
+          <div className="inline-selects">
+            <select
+              id="start-year"
+              value={startYear}
+              onChange={(event) => {
+                const nextStartYear = Number(event.target.value);
+                setStartYear(nextStartYear);
+                if (nextStartYear > endYear) {
+                  setEndYear(nextStartYear);
+                }
+              }}
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="End year"
+              value={endYear}
+              onChange={(event) => {
+                const nextEndYear = Number(event.target.value);
+                setEndYear(nextEndYear);
+                if (nextEndYear < startYear) {
+                  setStartYear(nextEndYear);
+                }
+              }}
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="selection-context toolbar-context">
           <span>Selected market</span>
           <strong>
             {activeRegion?.name}, {activeRegion?.state}
           </strong>
           <small>{activeRegion?.populationLabel}</small>
+        </div>
+      </section>
+
+      <section className="panel-card">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Comparison mode</p>
+            <h2>Compare up to two metros side by side</h2>
+          </div>
+          <p className="panel-copy">
+            This is the product-thinking layer recruiters notice: the same source table now powers filters,
+            KPI summaries, and a direct market-versus-market view.
+          </p>
+        </div>
+
+        <div className="comparison-selector-grid">
+          {dataset.regions.map((region, index) => {
+            const isSelected = comparisonRegionIds.includes(region.id);
+
+            return (
+              <label
+                key={region.id}
+                className={`comparison-chip ${isSelected ? "selected" : ""}`}
+                style={{
+                  borderColor: isSelected ? comparisonPalette[index % comparisonPalette.length] : undefined
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={(event) => handleComparisonSelection(region.id, event.target.checked)}
+                />
+                <span>
+                  {region.name}, {region.state}
+                </span>
+                <small>{region.populationLabel}</small>
+              </label>
+            );
+          })}
         </div>
       </section>
 
@@ -151,8 +268,8 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
               <h2>{metricConfig[selectedMetric].label} over time</h2>
             </div>
             <p className="panel-copy">
-              The chart is built from normalized yearly records, so swapping from the file artifact to
-              PostgreSQL does not change the UI contract.
+              The chart compares the selected metros across the chosen year window, while still relying on
+              the same normalized yearly records that drive the rest of the dashboard.
             </p>
           </div>
 
@@ -161,26 +278,25 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
               <LineChart data={activeSeries}>
                 <CartesianGrid stroke="rgba(148, 163, 184, 0.18)" vertical={false} />
                 <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString(undefined, {
-                      year: "numeric"
-                    })
-                  }
+                  dataKey="year"
                   stroke="#5f6b85"
                 />
                 <YAxis stroke="#5f6b85" />
                 <Tooltip
                   formatter={(value: number) => metricConfig[selectedMetric].formatter(value)}
-                  labelFormatter={(value) => new Date(value).getFullYear().toString()}
+                  labelFormatter={(value) => value.toString()}
                 />
-                <Line
-                  type="monotone"
-                  dataKey={selectedMetric}
-                  stroke={metricConfig[selectedMetric].color}
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                />
+                {comparisonRegions.map((region, index) => (
+                  <Line
+                    key={region!.id}
+                    type="monotone"
+                    dataKey={region!.id}
+                    name={region!.name}
+                    stroke={comparisonPalette[index % comparisonPalette.length]}
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -205,6 +321,60 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
         </article>
       </section>
 
+      <section className="comparison-card-grid">
+        {comparisonRegions.map((region, index) => {
+          if (!region) {
+            return null;
+          }
+
+          const latestObservation = getLatestObservationInRange(dataset, region.id, startYear, endYear);
+          const metricChange = getMetricChange(dataset, region.id, selectedMetric, startYear, endYear);
+
+          if (!latestObservation || !metricChange) {
+            return null;
+          }
+
+          return (
+            <article
+              key={region.id}
+              className="panel-card comparison-summary-card"
+              style={{ borderTop: `4px solid ${comparisonPalette[index % comparisonPalette.length]}` }}
+            >
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Selected comparison</p>
+                  <h2>
+                    {region.name}, {region.state}
+                  </h2>
+                </div>
+                <span className={`delta-pill ${metricChange.absoluteChange >= 0 ? "up" : "down"}`}>
+                  {metricChange.percentChange >= 0 ? "+" : ""}
+                  {metricChange.percentChange.toFixed(1)}%
+                </span>
+              </div>
+              <div className="comparison-metric-grid">
+                <div>
+                  <span>Latest {metricConfig[selectedMetric].label}</span>
+                  <strong>{metricConfig[selectedMetric].formatter(latestObservation[selectedMetric])}</strong>
+                </div>
+                <div>
+                  <span>Median income</span>
+                  <strong>{metricConfig.medianIncome.formatter(latestObservation.medianIncome)}</strong>
+                </div>
+                <div>
+                  <span>Vacancy rate</span>
+                  <strong>{metricConfig.vacancyRate.formatter(latestObservation.vacancyRate)}</strong>
+                </div>
+                <div>
+                  <span>Rent burden</span>
+                  <strong>{metricConfig.affordabilityPressure.formatter(latestObservation.affordabilityPressure)}</strong>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
       <section className="panel-card">
         <div className="panel-heading">
           <div>
@@ -222,6 +392,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
             <thead>
               <tr>
                 <th>Metro</th>
+                <th>Year</th>
                 <th>Median rent</th>
                 <th>Home value</th>
                 <th>Median income</th>
@@ -230,8 +401,12 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
               </tr>
             </thead>
             <tbody>
-              {dataset.regions.map((region) => {
-                const latest = getObservationsForRegion(dataset, region.id).at(-1);
+              {comparisonRegions.map((region) => {
+                if (!region) {
+                  return null;
+                }
+
+                const latest = getLatestObservationInRange(dataset, region.id, startYear, endYear);
 
                 if (!latest) {
                   return null;
@@ -245,6 +420,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                         {region.state} - {region.populationLabel}
                       </span>
                     </td>
+                    <td>{new Date(latest.date).getFullYear()}</td>
                     <td>{metricConfig.medianRent.formatter(latest.medianRent)}</td>
                     <td>{metricConfig.medianHomeValue.formatter(latest.medianHomeValue)}</td>
                     <td>{metricConfig.medianIncome.formatter(latest.medianIncome)}</td>

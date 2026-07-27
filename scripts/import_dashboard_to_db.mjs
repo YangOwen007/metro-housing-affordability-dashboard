@@ -1,6 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { loadProjectEnv } from "./env-utils.mjs";
+
+// Load DATABASE_URL from the same local env files used everywhere else in the project.
+loadProjectEnv();
 
 // This importer keeps the pipeline and database loosely coupled through one JSON handoff file.
 const prisma = new PrismaClient();

@@ -1,0 +1,38 @@
+[
+  {
+    "NAME": "Austin-Round Rock-Georgetown, TX Metro Area",
+    "B25064_001E": "1599",
+    "B25077_001E": "490000",
+    "B19013_001E": "94604",
+    "B25002_001E": "1048041",
+    "B25002_003E": "47938",
+    "metropolitan statistical area/micropolitan statistical area": "12420"
+  },
+  {
+    "NAME": "Miami-Fort Lauderdale-Pompano Beach, FL Metro Area",
+    "B25064_001E": "1712",
+    "B25077_001E": "429800",
+    "B19013_001E": "70769",
+    "B25002_001E": "2683497",
+    "B25002_003E": "339451",
+    "metropolitan statistical area/micropolitan statistical area": "33100"
+  },
+  {
+    "NAME": "San Diego-Chula Vista-Carlsbad, CA Metro Area",
+    "B25064_001E": "2045",
+    "B25077_001E": "846600",
+    "B19013_001E": "98928",
+    "B25002_001E": "1247279",
+    "B25002_003E": "74936",
+    "metropolitan statistical area/micropolitan statistical area": "41740"
+  },
+  {
+    "NAME": "Seattle-Tacoma-Bellevue, WA Metro Area",
+    "B25064_001E": "1848",
+    "B25077_001E": "718100",
+    "B19013_001E": "106909",
+    "B25002_001E": "1709710",
+    "B25002_003E": "98130",
+    "metropolitan statistical area/micropolitan statistical area": "42660"
+  }
+]

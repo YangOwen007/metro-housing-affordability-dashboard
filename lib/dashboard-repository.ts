@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { buildInsights } from "@/lib/dashboard-data";
+import { getDataSourceMode } from "@/lib/runtime-config";
 import type { DashboardDataset, MetricObservation, RegionRecord } from "@/types/dashboard";
 
 const datasetPath = path.join(process.cwd(), "data", "processed", "housing_dashboard_sample.json");
@@ -34,7 +35,13 @@ async function readFileDataset(): Promise<DashboardDataset> {
 
 // Dynamic import avoids crashing local development when Prisma Client has not been generated yet.
 async function readDatabaseDataset(): Promise<DashboardDataset | null> {
+  const dataSourceMode = getDataSourceMode();
+
   if (!process.env.DATABASE_URL) {
+    if (dataSourceMode === "database") {
+      throw new Error("DATA_SOURCE_MODE=database requires DATABASE_URL to be configured.");
+    }
+
     return null;
   }
 
@@ -116,6 +123,10 @@ async function readDatabaseDataset(): Promise<DashboardDataset | null> {
       insights: buildInsights(mappedRegions, observations)
     };
   } catch (error) {
+    if (dataSourceMode === "database") {
+      throw error;
+    }
+
     console.warn("Falling back to the file dataset because the database is not ready yet.", error);
     return null;
   }
@@ -130,4 +141,21 @@ export async function getDashboardDataset(): Promise<DashboardDataset> {
   }
 
   return readFileDataset();
+}
+
+// Health and deployment checks need a lightweight way to inspect which source actually resolved.
+export async function resolveDashboardDataSource() {
+  const databaseDataset = await readDatabaseDataset();
+
+  if (databaseDataset) {
+    return {
+      dataset: databaseDataset,
+      resolvedSource: "database" as const
+    };
+  }
+
+  return {
+    dataset: await readFileDataset(),
+    resolvedSource: "file" as const
+  };
 }

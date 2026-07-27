@@ -131,7 +131,7 @@ td strong,
 .toolbar-card {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: end;
 }
 
@@ -150,9 +150,14 @@ select {
   font: inherit;
 }
 
+input[type="checkbox"] {
+  accent-color: var(--text);
+}
+
 .kpi-grid,
 .chart-grid,
-.learning-grid {
+.learning-grid,
+.comparison-card-grid {
   display: grid;
   gap: 18px;
 }
@@ -194,6 +199,10 @@ select {
   grid-template-columns: 1.5fr 1fr;
 }
 
+.comparison-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .panel-large {
   min-height: 480px;
 }
@@ -228,6 +237,70 @@ select {
   margin-top: 16px;
 }
 
+.inline-selects {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.toolbar-context {
+  min-height: 100%;
+}
+
+.comparison-selector-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.comparison-chip {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(20, 33, 61, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+}
+
+.comparison-chip.selected {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 30px rgba(20, 33, 61, 0.08);
+}
+
+.comparison-chip input {
+  margin: 0;
+}
+
+.comparison-chip span,
+.comparison-metric-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comparison-chip small {
+  color: var(--muted);
+}
+
+.comparison-summary-card {
+  min-height: 100%;
+}
+
+.comparison-metric-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.comparison-metric-grid strong {
+  display: block;
+  margin-top: 6px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -257,7 +330,9 @@ td {
   .chart-grid,
   .toolbar-card,
   .kpi-grid,
-  .learning-grid {
+  .learning-grid,
+  .comparison-card-grid,
+  .comparison-selector-grid {
     grid-template-columns: 1fr;
   }
 }

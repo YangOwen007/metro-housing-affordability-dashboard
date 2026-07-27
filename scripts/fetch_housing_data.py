@@ -48,6 +48,26 @@ METROS = [
 ]
 
 
+def load_local_env(project_root: Path) -> None:
+    """Load simple KEY=VALUE pairs from .env and .env.local into os.environ."""
+
+    for file_name in [".env", ".env.local"]:
+        file_path = project_root / file_name
+
+        if not file_path.exists():
+            continue
+
+        for line in file_path.read_text(encoding="utf-8").splitlines():
+            stripped_line = line.strip()
+
+            if not stripped_line or stripped_line.startswith("#") or "=" not in stripped_line:
+                continue
+
+            key, value = stripped_line.split("=", 1)
+            cleaned_value = value.strip().strip('"').strip("'")
+            os.environ.setdefault(key.strip(), cleaned_value)
+
+
 def fetch_json(url: str) -> Any:
     """Fetch JSON from a public API using only the Python standard library."""
 
@@ -143,6 +163,8 @@ def build_insights(regions: list[dict[str, Any]], observations: list[dict[str, A
 def main() -> None:
     """Fetch raw data, normalize it, and write both raw and processed artifacts."""
 
+    project_root = Path(__file__).resolve().parent.parent
+    load_local_env(project_root)
     api_key = os.getenv("CENSUS_API_KEY")
 
     if not api_key:
@@ -150,7 +172,6 @@ def main() -> None:
             "CENSUS_API_KEY is required for live ACS requests. Add it to .env.local before running pnpm data:refresh."
         )
 
-    project_root = Path(__file__).resolve().parent.parent
     raw_directory = project_root / "data" / "raw" / "acs"
     processed_path = project_root / "data" / "processed" / "housing_dashboard_sample.json"
     raw_directory.mkdir(parents=True, exist_ok=True)
