@@ -25,7 +25,7 @@ const adminUrl = new URL(configuredUrl);
 adminUrl.pathname = "/postgres";
 process.env.DATABASE_URL = adminUrl.toString();
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ log: [] });
 
 async function main() {
   await prisma.$connect();
@@ -47,8 +47,9 @@ async function main() {
 }
 
 main()
-  .catch((error) => {
-    console.error(error);
+  .catch(() => {
+    // Maintenance errors can include connection details; keep terminal output generic.
+    console.error("Database bootstrap failed. Check local database access and CREATE DATABASE permission.");
     process.exitCode = 1;
   })
   .finally(async () => {

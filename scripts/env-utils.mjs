@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 // These are the env files we support for local development, in override order.
-const ENV_FILE_NAMES = [".env", ".env.local"];
+const ENV_FILE_NAMES = [".env.local", ".env"];
 
 function parseEnvLine(line) {
   const trimmedLine = line.trim();
@@ -45,7 +45,7 @@ export function loadProjectEnv(projectRoot = process.cwd()) {
     for (const line of fileContents.split(/\r?\n/)) {
       const parsedLine = parseEnvLine(line);
 
-      if (!parsedLine || process.env[parsedLine.key]) {
+      if (!parsedLine || Object.hasOwn(process.env, parsedLine.key)) {
         continue;
       }
 

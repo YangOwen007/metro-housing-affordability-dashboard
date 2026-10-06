@@ -9,6 +9,7 @@ can consume.
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from urllib.error import URLError
 
 
 ACS_VARIABLES = {
@@ -51,7 +53,7 @@ METROS = [
 def load_local_env(project_root: Path) -> None:
     """Load simple KEY=VALUE pairs from .env and .env.local into os.environ."""
 
-    for file_name in [".env", ".env.local"]:
+    for file_name in [".env.local", ".env"]:
         file_path = project_root / file_name
 
         if not file_path.exists():
@@ -71,14 +73,17 @@ def load_local_env(project_root: Path) -> None:
 def fetch_json(url: str) -> Any:
     """Fetch JSON from a public API using only the Python standard library."""
 
-    with urlopen(url) as response:  # noqa: S310 - this is an expected HTTPS API fetch.
-        payload = response.read().decode("utf-8")
+    try:
+        with urlopen(url, timeout=30) as response:
+            payload = response.read().decode("utf-8")
+    except (URLError, TimeoutError):
+        # urllib errors can include the URL's API key; never print the raw exception.
+        raise RuntimeError("ACS request failed. Check connectivity and API credentials.") from None
 
     try:
         return json.loads(payload)
-    except JSONDecodeError as error:
-        preview = payload[:300].replace("\n", " ")
-        raise RuntimeError(f"Expected JSON from the ACS API but received: {preview}") from error
+    except JSONDecodeError:
+        raise RuntimeError("ACS returned a non-JSON response. Check the API key and dataset.") from None
 
 
 def build_acs_url(year: int, cbsa_code: str, api_key: str | None) -> str:
@@ -98,16 +103,21 @@ def build_acs_url(year: int, cbsa_code: str, api_key: str | None) -> str:
 def parse_census_value(raw_value: str) -> float:
     """Convert ACS numeric strings into floats and guard against missing sentinels."""
 
-    if raw_value in {"-666666666", "-222222222", "null"}:
-        raise ValueError(f"Encountered missing ACS value: {raw_value}")
-
-    return float(raw_value)
+    try:
+        value = float(raw_value)
+    except (ValueError, TypeError):
+        raise ValueError("Missing or non-numeric ACS value") from None
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("Missing, suppressed, or invalid ACS value")
+    return value
 
 
 def build_affordability_pressure(median_rent: float, median_income: float) -> float:
-    """Estimate rent burden as annual rent divided by annual household income."""
+    """Compute a ratio of medians, not actual household renter cost burden."""
 
     annual_rent = median_rent * 12
+    if median_income <= 0:
+        raise ValueError("Median income must be positive")
     return round((annual_rent / median_income) * 100, 2)
 
 
@@ -117,44 +127,43 @@ def build_insights(regions: list[dict[str, Any]], observations: list[dict[str, A
     latest_by_region = []
 
     for region in regions:
-      series = sorted(
-          [record for record in observations if record["regionId"] == region["id"]],
-          key=lambda record: record["date"],
-      )
-
-      if series:
-          latest_by_region.append({"region": region, "latest": series[-1], "first": series[0]})
+        series = sorted(
+            [record for record in observations if record["regionId"] == region["id"]],
+            key=lambda record: record["date"],
+        )
+        if series:
+            latest_by_region.append({"region": region, "latest": series[-1], "first": series[0]})
+    if not latest_by_region:
+        return []
 
     highest_burden = max(latest_by_region, key=lambda item: item["latest"]["affordabilityPressure"])
     fastest_income_growth = max(
         latest_by_region,
-        key=lambda item: item["latest"]["medianIncome"] - item["first"]["medianIncome"],
+        key=lambda item: (item["latest"]["medianIncome"] - item["first"]["medianIncome"]) / item["first"]["medianIncome"],
     )
     tightest_vacancy = min(latest_by_region, key=lambda item: item["latest"]["vacancyRate"])
 
     return [
         {
             "id": "highest-rent-burden",
-            "title": f'{highest_burden["region"]["name"]} has the highest current rent burden in the tracked metros.',
+            "title": f'{highest_burden["region"]["name"]} has the highest rent / income ratio in the tracked metros.',
             "detail": (
-                f'Its latest rent burden is {highest_burden["latest"]["affordabilityPressure"]:.1f}% of median '
-                "household income, which makes the affordability story easier to interpret than raw rent alone."
+                f'The ratio of annualized median gross rent to median household income is '
+                f'{highest_burden["latest"]["affordabilityPressure"]:.1f}%. It does not measure individual renter cost burden.'
             ),
         },
         {
             "id": "fastest-income-growth",
             "title": f'{fastest_income_growth["region"]["name"]} shows the strongest income increase across the current ACS window.',
             "detail": (
-                "This is a good example of how normalized yearly observations let you compute trends without "
-                "changing the source fetch logic."
+                "Income growth is the percentage change between the first and last annual estimate, without inflation adjustment."
             ),
         },
         {
             "id": "tightest-vacancy",
             "title": f'{tightest_vacancy["region"]["name"]} currently has the tightest vacancy rate in this metro set.',
             "detail": (
-                "Vacancy rate is an honest ACS-backed supply signal for the MVP, while active listing inventory "
-                "would require an additional source family."
+                "This includes all vacant housing units, including seasonal and other vacancies, not just available rentals."
             ),
         },
     ]
@@ -188,6 +197,7 @@ def main() -> None:
         for metro in METROS
     ]
     observations: list[dict[str, Any]] = []
+    raw_snapshots = {}
 
     for year in ACS_YEARS:
         year_rows = []
@@ -195,6 +205,8 @@ def main() -> None:
         for metro in METROS:
             url = build_acs_url(year, metro.cbsa_code, api_key)
             response_rows = fetch_json(url)
+            if not isinstance(response_rows, list) or len(response_rows) != 2:
+                raise ValueError("Expected exactly one ACS metro record")
             header, values = response_rows[0], response_rows[1]
             row = dict(zip(header, values, strict=True))
             year_rows.append(row)
@@ -204,6 +216,8 @@ def main() -> None:
             median_income = parse_census_value(row[ACS_VARIABLES["median_income"]])
             total_units = parse_census_value(row[ACS_VARIABLES["total_units"]])
             vacant_units = parse_census_value(row[ACS_VARIABLES["vacant_units"]])
+            if total_units <= 0 or vacant_units > total_units:
+                raise ValueError("Invalid ACS housing unit counts")
             vacancy_rate = round((vacant_units / total_units) * 100, 2)
 
             observations.append(
@@ -220,9 +234,7 @@ def main() -> None:
 
         # Keeping raw snapshots is useful for debugging and for showing the "raw to clean" story in GitHub.
         raw_output_path = raw_directory / f"acs_metro_snapshot_{year}.json"
-        with raw_output_path.open("w", encoding="utf-8") as raw_output_file:
-            json.dump(year_rows, raw_output_file, indent=2)
-            raw_output_file.write("\n")
+        raw_snapshots[raw_output_path] = year_rows
 
     processed_dataset = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
@@ -232,9 +244,15 @@ def main() -> None:
         "insights": build_insights(regions, observations),
     }
 
-    with processed_path.open("w", encoding="utf-8") as processed_output_file:
-        json.dump(processed_dataset, processed_output_file, indent=2)
-        processed_output_file.write("\n")
+    # Publish only after all requests validate. Each replace is atomic on one filesystem.
+    if processed_path.exists():
+        previous = json.loads(processed_path.read_text(encoding="utf-8"))
+        if previous.get("regions") == regions and previous.get("observations") == observations:
+            processed_dataset["updatedAt"] = previous["updatedAt"]
+    for output_path, content in [*raw_snapshots.items(), (processed_path, processed_dataset)]:
+        temporary_path = output_path.with_suffix(".json.tmp")
+        temporary_path.write_text(json.dumps(content, indent=2) + "\n", encoding="utf-8")
+        temporary_path.replace(output_path)
 
     print(f"Wrote normalized ACS dashboard data to {processed_path}")
 

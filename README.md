@@ -1,151 +1,118 @@
 # Metro Housing Affordability Dashboard
 
-A polished portfolio project that shows the full data lifecycle: fetching public metro housing data, cleaning and normalizing it, storing it in a relational model, and presenting it through an internship-ready dashboard UI.
+Compare annual housing and income estimates for Austin, Miami, San Diego, and Seattle. The dashboard uses U.S. Census American Community Survey (ACS) 1-year metro estimates for 2021-2024, with 16 observations in the committed dataset.
 
-## Why this project
+![Dashboard showing annual housing estimates, filters, metro comparisons and methodology](docs/images/dashboard.png)
 
-This is a strong internship portfolio piece because it demonstrates:
+## Current status
 
-- data ingestion from real public sources
-- transformation and normalization work
-- storage design for time-series analytics
-- a modern TypeScript product surface
-- product thinking around filters, KPIs, drill-downs, and insight callouts
+The dashboard runs locally from a committed dataset without an API key or database. PostgreSQL storage is optional. No public deployment URL is configured. Scheduled refresh requires a GitHub Actions secret and repository write permission; it does not update a hosted database. This is a personal project under active development. The dependency security gate currently fails on remaining transitive advisories; review them before public deployment (see [review notes](docs/REVIEW.md)).
 
-## Current data sources
+## Features
 
-- U.S. Census ACS 1-year estimates for metro-level median rent, median home value, median household income, and vacancy counts: [ACS API](https://www.census.gov/programs-surveys/acs/data/data-via-api.html)
-- The current pipeline targets the latest ACS 1-year annual snapshots available as of July 27, 2026: `2021`, `2022`, `2023`, and `2024`
+- Five metric cards for a selected metro and year range.
+- Compare one or two metros using a trend chart, latest-value table, and filtered insights.
+- Python ingestion saves raw ACS responses and a normalized JSON artifact.
+- Optional PostgreSQL import uses unique region/date keys, validation, and transactional upserts.
+- Public read-only JSON endpoint at `/api/dashboard` and readiness endpoint at `/api/health`.
 
-## Why ACS first
+## Data and methodology
 
-ACS is the strongest first live source for this dashboard because it is:
+Source: [Census ACS API documentation](https://www.census.gov/data/developers/data-sets/acs-1year.html). City labels are shorthand for entire metropolitan statistical areas, identified by CBSA code.
 
-- official and stable
-- available by metro area
-- rich enough to support both raw metrics and derived analytics
-- realistic for an internship-scale MVP
+| Metric | ACS variable / calculation | Interpretation |
+| --- | --- | --- |
+| Median monthly gross rent | B25064_001E | Includes contract rent and utilities |
+| Median home value | B25077_001E | Owner-occupied housing estimate |
+| Median household income | B19013_001E | All households, not renter households only |
+| Total housing vacancy | B25002_003E / B25002_001E x 100 | Includes seasonal and other vacant units |
+| Rent / income ratio | Median gross rent x 12 / median household income x 100 | Ratio of medians, not measured renter cost burden |
 
-The original scaffold used a placeholder "inventory" metric, but the live pipeline now uses `vacancyRate` instead because that is directly supported by ACS and is a more honest source-aligned metric.
+Amounts are nominal dollars. Comparisons omit inflation adjustments and margins of error; they should not be interpreted as statistically significant rankings or financial advice. The fixed year window does not automatically advance when Census releases a new vintage. `updatedAt` records artifact change time in file mode and successful import time in database mode, not the ACS release date.
 
-## MVP scope
-
-Build one dashboard focused on U.S. metro housing affordability trends.
-
-### Current MVP features
-
-- KPI cards for median rent, median home value, median income, vacancy rate, and rent burden
-- line chart for a selected metric over time
-- two-metro comparison mode with a selectable year window
-- metro and metric filters
-- comparison table across selected metros
-- insight callouts generated from the normalized dataset
-- Python ingestion pipeline that writes both raw and processed artifacts
-- PostgreSQL-ready Prisma schema and DB import script
-- API route that can read from PostgreSQL when available and falls back to the processed file otherwise
-- GitHub Actions workflow that refreshes the tracked dataset on a schedule
-- deployment health route at `/api/health`
-- explicit production data-source control through `DATA_SOURCE_MODE`
-
-### Next likely upgrades
-
-- add FRED mortgage-rate overlays
-- CSV export of filtered slices
-- deployment with a hosted PostgreSQL database
-
-## Tech stack
-
-- Frontend: Next.js App Router + TypeScript
-- Styling: custom CSS with a dashboard-oriented design system
-- Charts: Recharts
-- Data pipeline: Python
-- Data model: PostgreSQL + Prisma
-
-## Project structure
+## Architecture
 
 ```text
-app/                  Next.js pages and API routes
-components/           Dashboard UI components
-data/raw/             Saved source snapshots for debugging and learning
-data/processed/       Normalized dataset consumed by the app
-lib/                  Shared data loading and transformation helpers
-prisma/               Database schema
-scripts/              Data ingestion, database bootstrap, and deployment checks
-types/                Shared TypeScript types
+Census HTTPS API -> Python validation/normalization -> raw snapshots + processed JSON
+                                                        |
+                                          optional transactional Prisma import
+                                                        |
+                                      PostgreSQL: Region, MetricObservation, RefreshRun
+                                                        |
+                                 Next.js repository (file / database / explicit auto)
+                                                        |
+                                     server page + JSON API -> interactive React charts
 ```
 
-## Getting started
+Next.js 15 App Router, React 19, TypeScript, Recharts 2, custom CSS, Python standard library, Prisma 6 and PostgreSQL. File mode is the default so reviewers can reproduce the UI without services. Database mode fails when storage is missing, unreachable, empty, or has no successful import. Explicit `auto` mode may fall back to the artifact and logs that event. Reads occur at request time, not during the production build.
 
-1. Install dependencies with `pnpm install`
-2. Copy `.env.example` to `.env.local`
-3. Run `pnpm setup:check` to see what is still missing
-4. Add a valid `CENSUS_API_KEY` to `.env.local`
-5. Refresh the processed dataset with `pnpm data:refresh`
-6. Start the app with `pnpm dev`
+## Quick start
 
-## Database flow
+Requires Node.js 22 or 24 and pnpm 10.17.1. Python 3.12+ is needed only for ingestion and Python tests. Install the documented pnpm version with `npm install --global pnpm@10.17.1` if needed.
 
-1. Set `DATABASE_URL` in `.env.local`
-2. Run `pnpm db:generate`
-3. Run `pnpm db:push`
-4. Run `pnpm db:import`
+```sh
+git clone https://github.com/YangOwen007/metro-housing-affordability-dashboard.git
+cd metro-housing-affordability-dashboard
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm dev
+```
 
-After those steps, the page and `/api/dashboard` route will read from PostgreSQL automatically.
+Open [localhost:3000](http://localhost:3000). No environment file is required for the default file mode. To customize configuration, copy `.env.example` to `.env.local` (`Copy-Item .env.example .env.local` in PowerShell, `cp .env.example .env.local` on macOS/Linux).
 
-## Setup notes
+| Variable | Required when | Purpose |
+| --- | --- | --- |
+| DATA_SOURCE_MODE | Optional; defaults to file | `file`, `database`, or `auto`; invalid values fail |
+| DATABASE_URL | Database mode/import/migrations | PostgreSQL connection string; keep server-side |
+| CENSUS_API_KEY | Fetching ACS data only | Census key; never required by the frontend |
 
-- The Python pipeline, Prisma commands, and database import script all read from `.env.local`, so you only need one local env file.
-- If something is missing, `pnpm setup:check` gives a quick status report before you run the heavier commands.
-- The scheduled GitHub Actions refresh expects a repository secret named `CENSUS_API_KEY`.
+Local scripts use shell variables first, then `.env.local`, then `.env`. Next.js uses its native environment loading. Never put credentials in `NEXT_PUBLIC_*` variables or commit local env files.
 
-## Deployment readiness
+## Ingestion and storage
 
-Use `pnpm deploy:check` before hosting the app. It checks:
+Set `CENSUS_API_KEY` locally, then run `pnpm data:refresh`. `python` must be on PATH; Windows users with the Python launcher can run `py -3 scripts/fetch_housing_data.py` instead. Requests have a 30-second timeout and reject missing/suppressed/nonfinite values. All responses validate before publishing; each artifact replacement is atomic, though the entire set of raw files is not one filesystem transaction. Unchanged observations preserve the timestamp to avoid weekly no-op commits.
 
-- whether the processed fallback dataset exists
-- whether `DATA_SOURCE_MODE` is set intentionally
-- whether `DATABASE_URL` is ready when database mode is required
-- whether your Census key is ready for scheduled refreshes
+For a **new, empty** PostgreSQL database, set `DATABASE_URL`, then:
 
-### Data source modes
+```sh
+pnpm db:generate
+pnpm db:migrate
+pnpm db:import
+```
 
-The app now supports an explicit `DATA_SOURCE_MODE` env var:
+Set `DATA_SOURCE_MODE=database` and restart the app. Repeated imports update matching region/date rows rather than adding duplicate observations. Existing databases created with `db:push` need the baseline procedure in [the deployment guide](docs/DEPLOYMENT.md) before using migrations. `db:push` is only for disposable development databases. The importer does not remove rows absent from the current artifact.
 
-- `auto`: prefer PostgreSQL when available, otherwise fall back to the committed processed dataset
-- `database`: require PostgreSQL and fail health checks if the DB is unavailable
-- `file`: always serve the committed processed dataset
+## Checks and scripts
 
-For first deployment, `auto` is the safest option. Once you move to a hosted PostgreSQL database and want stricter behavior, switch to `database`.
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:database # optional; DATABASE_URL required, uses a disposable schema
+python -m unittest discover -s tests -p 'test_*.py' -v
+pnpm security:scan
+pnpm audit --audit-level high
+pnpm build
+pnpm start
+```
 
-### Health checks
+`pnpm test` covers source selection, validation, UTC year boundaries, filtering, insights, and env precedence. Python tests cover parsing, ratio math, and error redaction. CI repeats these checks plus a production HTTP smoke test. The secret scan is heuristic, not a guarantee of absence. `pnpm setup:check` reports local prerequisites; `pnpm deploy:check` checks dataset/configuration and exits nonzero on failure, but cannot certify a remote account or service.
 
-The route `/api/health` returns:
+## Deployment
 
-- whether the app is healthy
-- which data source mode is configured
-- whether the app resolved to `database` or `file`
-- the current dataset timestamp and region count
+Recommended initial path: a Next.js deployment on Vercel with `DATA_SOURCE_MODE=file`. A hosting account and GitHub import remain required. Optional database deployment additionally needs a hosted PostgreSQL service, credentials, migrations, imported data, connection pooling, and backups. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for exact setup, verification, and rollback steps.
 
-This is useful for deployment verification and uptime checks.
+## Security and privacy
 
-## Scheduled refresh
+Only public aggregate Census data is displayed; there is no login, user submission, analytics tracking, or private record collection. Both API endpoints are deliberately public and read-only. Secrets stay on the server or in the offline ingestion environment. API failure responses do not expose database exception text. Hosting TLS, traffic limits, and private database access must be configured on the host. Do not upload private data through this pipeline.
 
-The workflow at `.github/workflows/refresh-dashboard-data.yml` does two things:
+## Known limitations and next steps
 
-- fetches the latest ACS snapshots on a weekly schedule or manual trigger
-- commits refreshed raw and processed data files back to the repository when they change
+- Four metros, four years, no automatic vintage discovery, inflation adjustment, or margins of error.
+- File deployments require a redeploy to pick up changed artifacts. GitHub bot commits may not trigger downstream Actions; verify the host's Git integration explicitly.
+- Database imports are manual; the refresh workflow only commits files. Production database integration and restore procedures need host-specific verification.
+- Recharts 2 and ESLint 9 are older major versions. Dependency audit findings must be reviewed before publishing; see [review notes](docs/REVIEW.md).
+- Automated tests do not constitute a full accessibility, browser, or load audit.
+- No license has been selected. Public visibility does not grant reuse rights; choosing licensing terms is an owner decision.
 
-To enable it on GitHub:
-
-1. Open your repository settings
-2. Go to `Secrets and variables -> Actions`
-3. Add a repository secret named `CENSUS_API_KEY`
-
-This workflow intentionally refreshes the tracked data artifact in GitHub rather than trying to reach your local PostgreSQL instance from GitHub Actions.
-
-## What you’ll learn by reading this repo
-
-- how to model analytics-friendly time-series data
-- how to shape raw API responses into UI-ready records
-- how frontend filters map onto a normalized dataset
-- how to separate ingestion, storage, presentation, and deployment concerns
+Technical learning from this project includes modeling region/time-series data, separating ingestion from reads, deriving analytics from a common contract, and making storage failures visible without exposing credentials.

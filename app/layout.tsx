@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Housing + Rent Trends Dashboard",
   description:
-    "An internship-ready data dashboard that turns public housing, rent, and macroeconomic data into visual analytics."
+    "Compare annual Census ACS rent, home value, income, and housing vacancy estimates across four U.S. metro areas."
 };
 
 export default function RootLayout({

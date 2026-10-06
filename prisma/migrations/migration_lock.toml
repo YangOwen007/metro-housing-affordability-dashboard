@@ -1,0 +1,2 @@
+# Migrations are versioned independently of local development databases.
+provider = "postgresql"

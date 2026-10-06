@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { resolveDashboardDataSource } from "@/lib/dashboard-repository";
 import { getDataSourceMode } from "@/lib/runtime-config";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 // A tiny health route makes deployment checks and uptime debugging much easier once the app is hosted.
 export async function GET() {
   try {
@@ -13,15 +16,14 @@ export async function GET() {
       resolvedSource,
       updatedAt: dataset.updatedAt,
       regions: dataset.regions.length
-    });
-  } catch (error) {
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
     return NextResponse.json(
       {
         ok: false,
-        dataSourceMode: getDataSourceMode(),
-        error: error instanceof Error ? error.message : "Unknown health-check error"
+        error: "Dashboard data unavailable. Check server configuration and import status."
       },
-      { status: 500 }
+      { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
 }

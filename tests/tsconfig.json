@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false, "incremental": false, "module": "commonjs", "moduleResolution": "node",
+    "outDir": "../.test-build", "rootDir": "..", "plugins": []
+  },
+  "include": ["../lib/runtime-config.ts", "../lib/dashboard-data.ts", "../types/dashboard.ts"],
+  "exclude": ["../node_modules"]
+}

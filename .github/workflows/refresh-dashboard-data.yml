@@ -1,42 +1,34 @@
 name: Refresh Dashboard Data
-
 on:
   workflow_dispatch:
   schedule:
-    # Run every Monday at 13:00 UTC so the portfolio dataset stays fresh automatically.
+    # The fixed annual window is refreshed weekly; this does not discover new vintages.
     - cron: "0 13 * * 1"
-
 permissions:
   contents: write
-
+concurrency:
+  group: refresh-dashboard-data
+  cancel-in-progress: false
 jobs:
   refresh-data:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-          cache: npm
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: npm install
-
+          python-version: '3.12'
       - name: Refresh Census ACS dataset
         env:
           CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
-        run: npm run data:refresh:ci
-
-      - name: Commit refreshed dataset files
+        run: python scripts/fetch_housing_data.py
+      - name: Validate normalized artifact
+        run: node --input-type=module -e "import {readFileSync} from 'node:fs'; import {validateDataset} from './scripts/validate_dataset.mjs'; validateDataset(JSON.parse(readFileSync('data/processed/housing_dashboard_sample.json','utf8')))"
+      - name: Commit changed dataset
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

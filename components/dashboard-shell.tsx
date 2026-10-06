@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,11 +13,12 @@ import {
 } from "recharts";
 import {
   buildComparisonSeries,
+  buildInsights,
+  filterObservationsByYearRange,
   comparisonPalette,
   getAvailableYears,
   getLatestObservationInRange,
   getMetricChange,
-  getObservationsForRegion,
   metricConfig
 } from "@/lib/dashboard-data";
 import type { DashboardDataset, MetricKey } from "@/types/dashboard";
@@ -72,6 +74,20 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
   const comparisonRegions = comparisonRegionIds
     .map((regionId) => dataset.regions.find((region) => region.id === regionId))
     .filter(Boolean);
+  // Insights follow the same metro/year selection as the comparison chart.
+  const insights = buildInsights(
+    dataset.regions.filter((region) => comparisonRegionIds.includes(region.id)),
+    filterObservationsByYearRange(dataset.observations, startYear, endYear)
+  );
+  const regionColor = (id: string) => comparisonPalette[
+    dataset.regions.findIndex((region) => region.id === id) % comparisonPalette.length
+  ];
+
+  if (!dataset.regions.length || !availableYears.length) {
+    return <main className="page-shell"><section className="panel-card" role="status">
+      <h1>No housing data available</h1><p>The dataset has no observations to display.</p>
+    </section></main>;
+  }
 
   function handleComparisonSelection(regionId: string, checked: boolean) {
     setComparisonRegionIds((currentRegionIds) => {
@@ -93,24 +109,24 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
     <main className="page-shell">
       <section className="hero-card">
         <div>
-          <p className="eyebrow">Summer 2026 portfolio build</p>
+          <p className="eyebrow">Annual Census ACS estimates</p>
           <h1>Metro housing affordability dashboard</h1>
           <p className="hero-copy">
-            Explore how median rent, home values, income, vacancy rate, and rent burden change across
+            Explore how median rent, home values, income, vacancy rate, and rent / income ratios change across
             major U.S. metros using normalized Census ACS data.
           </p>
         </div>
         <div className="hero-meta">
           <div>
-            <span>Dataset updated</span>
-            <strong>{new Date(dataset.updatedAt).toLocaleDateString()}</strong>
+            <span>Dataset loaded</span>
+            <strong>{new Date(dataset.updatedAt).toLocaleDateString("en-US", { timeZone: "UTC" })}</strong>
           </div>
           <div>
-            <span>Regions in MVP</span>
+            <span>Metro areas</span>
             <strong>{dataset.regions.length}</strong>
           </div>
           <div>
-            <span>Live source</span>
+            <span>Data source</span>
             <strong>{dataset.source}</strong>
           </div>
         </div>
@@ -203,8 +219,8 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
             <h2>Compare up to two metros side by side</h2>
           </div>
           <p className="panel-copy">
-            This is the product-thinking layer recruiters notice: the same source table now powers filters,
-            KPI summaries, and a direct market-versus-market view.
+            Select one or two metro areas. The selected market above controls the KPI cards;
+            the comparison selection controls the chart, insights, and table.
           </p>
         </div>
 
@@ -223,6 +239,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                 <input
                   type="checkbox"
                   checked={isSelected}
+                  disabled={(!isSelected && comparisonRegionIds.length >= 2) || (isSelected && comparisonRegionIds.length === 1)}
                   onChange={(event) => handleComparisonSelection(region.id, event.target.checked)}
                 />
                 <span>
@@ -275,7 +292,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
 
           <div className="chart-frame">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={activeSeries}>
+              <LineChart data={activeSeries} accessibilityLayer>
                 <CartesianGrid stroke="rgba(148, 163, 184, 0.18)" vertical={false} />
                 <XAxis
                   dataKey="year"
@@ -286,13 +303,14 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                   formatter={(value: number) => metricConfig[selectedMetric].formatter(value)}
                   labelFormatter={(value) => value.toString()}
                 />
-                {comparisonRegions.map((region, index) => (
+                <Legend />
+                {comparisonRegions.map((region) => (
                   <Line
                     key={region!.id}
                     type="monotone"
                     dataKey={region!.id}
                     name={region!.name}
-                    stroke={comparisonPalette[index % comparisonPalette.length]}
+                    stroke={regionColor(region!.id)}
                     strokeWidth={3}
                     dot={{ r: 4 }}
                   />
@@ -311,7 +329,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
           </div>
 
           <div className="insight-list">
-            {dataset.insights.map((insight) => (
+            {insights.map((insight) => (
               <div key={insight.id} className="insight-card">
                 <strong>{insight.title}</strong>
                 <p>{insight.detail}</p>
@@ -322,7 +340,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
       </section>
 
       <section className="comparison-card-grid">
-        {comparisonRegions.map((region, index) => {
+        {comparisonRegions.map((region) => {
           if (!region) {
             return null;
           }
@@ -338,7 +356,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
             <article
               key={region.id}
               className="panel-card comparison-summary-card"
-              style={{ borderTop: `4px solid ${comparisonPalette[index % comparisonPalette.length]}` }}
+              style={{ borderTop: `4px solid ${regionColor(region.id)}` }}
             >
               <div className="panel-heading">
                 <div>
@@ -366,7 +384,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                   <strong>{metricConfig.vacancyRate.formatter(latestObservation.vacancyRate)}</strong>
                 </div>
                 <div>
-                  <span>Rent burden</span>
+                  <span>Rent / income ratio</span>
                   <strong>{metricConfig.affordabilityPressure.formatter(latestObservation.affordabilityPressure)}</strong>
                 </div>
               </div>
@@ -382,13 +400,13 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
             <h2>Latest metro snapshot</h2>
           </div>
           <p className="panel-copy">
-            Exact values matter in real analytics products, so this table complements the trend chart with
-            recruiter-friendly scanability.
+            Values are for the latest available observation in the selected year window.
           </p>
         </div>
 
         <div className="table-scroll">
           <table>
+            <caption>Selected metro estimates, {startYear}-{endYear}. Dollar amounts are nominal.</caption>
             <thead>
               <tr>
                 <th>Metro</th>
@@ -397,7 +415,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                 <th>Home value</th>
                 <th>Median income</th>
                 <th>Vacancy rate</th>
-                <th>Rent burden</th>
+                <th>Rent / income ratio</th>
               </tr>
             </thead>
             <tbody>
@@ -420,7 +438,7 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
                         {region.state} - {region.populationLabel}
                       </span>
                     </td>
-                    <td>{new Date(latest.date).getFullYear()}</td>
+                    <td>{new Date(latest.date).getUTCFullYear()}</td>
                     <td>{metricConfig.medianRent.formatter(latest.medianRent)}</td>
                     <td>{metricConfig.medianHomeValue.formatter(latest.medianHomeValue)}</td>
                     <td>{metricConfig.medianIncome.formatter(latest.medianIncome)}</td>
@@ -437,23 +455,23 @@ export function DashboardShell({ dataset }: DashboardShellProps) {
       <section className="panel-card">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Learning angle</p>
-            <h2>What this version now demonstrates</h2>
+            <p className="eyebrow">Methodology</p>
+            <h2>How to interpret these estimates</h2>
           </div>
         </div>
 
         <div className="learning-grid">
           <div>
-            <strong>Real ingestion</strong>
-            <p>Fetch official ACS metro data, clean the response shape, and publish a normalized artifact the app can read.</p>
+            <strong>Annual estimates</strong>
+            <p>ACS 1-year estimates cover metro areas, not just city boundaries. The fixed dataset covers 2021-2024 and does not include margins of error.</p>
           </div>
           <div>
-            <strong>Storage design</strong>
-            <p>Use one region table plus one time-series observation table so the API can evolve from file-backed to DB-backed reads cleanly.</p>
+            <strong>Total housing vacancy</strong>
+            <p>Vacant housing units divided by all housing units includes seasonal and other vacancies. It is not a count of available rentals.</p>
           </div>
           <div>
-            <strong>Analytics thinking</strong>
-            <p>Convert raw rent and income values into a rent-burden metric that tells a more useful story than the source fields alone.</p>
+            <strong>Ratio of medians</strong>
+            <p>Median monthly gross rent times 12 divided by median income for all households is a comparison proxy. It does not measure renter cost burden. Dollars are not inflation adjusted.</p>
           </div>
         </div>
       </section>

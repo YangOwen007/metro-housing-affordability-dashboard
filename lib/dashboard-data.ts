@@ -14,17 +14,17 @@ export const metricConfig: Record<
   medianRent: {
     label: "Median Rent",
     color: "#ff7a18",
-    formatter: (value) => `$${Math.round(value).toLocaleString()}`
+    formatter: (value) => `$${Math.round(value).toLocaleString("en-US")}`
   },
   medianHomeValue: {
     label: "Median Home Value",
     color: "#0077b6",
-    formatter: (value) => `$${Math.round(value).toLocaleString()}`
+    formatter: (value) => `$${Math.round(value).toLocaleString("en-US")}`
   },
   medianIncome: {
     label: "Median Income",
     color: "#0f9d58",
-    formatter: (value) => `$${Math.round(value).toLocaleString()}`
+    formatter: (value) => `$${Math.round(value).toLocaleString("en-US")}`
   },
   vacancyRate: {
     label: "Vacancy Rate",
@@ -32,7 +32,7 @@ export const metricConfig: Record<
     formatter: (value) => `${value.toFixed(1)}%`
   },
   affordabilityPressure: {
-    label: "Rent Burden",
+    label: "Rent / Income Ratio",
     color: "#d9485f",
     formatter: (value) => `${value.toFixed(1)}%`
   }
@@ -52,7 +52,7 @@ export function getObservationsForRegion(dataset: DashboardDataset, regionId: st
 export function getAvailableYears(dataset: DashboardDataset) {
   return Array.from(
     new Set(
-      dataset.observations.map((observation) => new Date(observation.date).getFullYear())
+      dataset.observations.map((observation) => new Date(observation.date).getUTCFullYear())
     )
   ).sort((left, right) => left - right);
 }
@@ -64,7 +64,7 @@ export function filterObservationsByYearRange(
   endYear: number
 ) {
   return observations.filter((observation) => {
-    const observationYear = new Date(observation.date).getFullYear();
+    const observationYear = new Date(observation.date).getUTCFullYear();
 
     return observationYear >= startYear && observationYear <= endYear;
   });
@@ -89,7 +89,7 @@ export function buildComparisonSeries(
     );
 
     for (const observation of filteredObservations) {
-      const year = new Date(observation.date).getFullYear();
+      const year = new Date(observation.date).getUTCFullYear();
       const currentRow = rowsByYear.get(year) ?? { year: year.toString() };
       currentRow[regionId] = observation[metric];
       currentRow[`${regionId}Label`] = regionNames.get(regionId) ?? regionId;
@@ -175,7 +175,7 @@ export function buildInsights(
       const first = series.at(0);
       const last = series.at(-1);
 
-      if (!first || !last) {
+      if (!first || !last || first.date === last.date) {
         return null;
       }
 
@@ -193,18 +193,18 @@ export function buildInsights(
   return [
     {
       id: "highest-rent-burden",
-      title: `${highestRentBurden.region.name} has the highest current rent burden in this metro set.`,
-      detail: `Its latest estimated rent burden is ${highestRentBurden.latest.affordabilityPressure.toFixed(1)}% of median household income, which helps translate raw rent and income values into an affordability story.`
+      title: `${highestRentBurden.region.name} has the highest rent / income ratio in this selection.`,
+      detail: `Annualized median gross rent divided by median household income is ${highestRentBurden.latest.affordabilityPressure.toFixed(1)}%. This ratio of medians does not measure individual renter cost burden.`
     },
-    {
+    ...(fastestIncomeGrowth ? [{
       id: "fastest-income-growth",
-      title: `${fastestIncomeGrowth?.region.name ?? "One market"} shows the strongest income growth across the current ACS window.`,
-      detail: `Using first-versus-last comparisons on the normalized yearly records is a clean example of how analytics layers can sit on top of one shared source table.`
-    },
+      title: `${fastestIncomeGrowth?.region.name ?? "One market"} has the largest percentage income increase in this selection.`,
+      detail: `Median household income changed by ${fastestIncomeGrowth?.change.toFixed(1) ?? "0.0"}% from the first to the last selected observation, without adjustment for inflation.`
+    }] : []),
     {
       id: "tightest-vacancy",
-      title: `${tightestVacancy.region.name} currently has the tightest housing vacancy rate among the tracked metros.`,
-      detail: `Vacancy rate is a more honest ACS-backed supply signal for this MVP than "active inventory," which would require a different source family such as Zillow listings data.`
+      title: `${tightestVacancy.region.name} has the lowest total housing vacancy rate in this selection.`,
+      detail: `${tightestVacancy.latest.vacancyRate.toFixed(1)}% of housing units are vacant, including seasonal and other vacancies. This is not the rental vacancy rate or active listing inventory.`
     }
   ];
 }

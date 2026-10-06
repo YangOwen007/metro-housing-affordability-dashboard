@@ -1,0 +1,8 @@
+# Compatible transitive patches address advisories without changing framework majors.
+packages:
+  - '.'
+overrides:
+  postcss: ^8.5.23
+  nanoid@3: ^3.3.20
+  source-map-js: ^1.2.2
+  brace-expansion@1: ^1.1.21

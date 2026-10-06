@@ -180,18 +180,18 @@
   "insights": [
     {
       "id": "highest-rent-burden",
-      "title": "Miami has the highest current rent burden in the tracked metros.",
-      "detail": "Its latest rent burden is 31.0% of median household income, which makes the affordability story easier to interpret than raw rent alone."
+      "title": "Miami has the highest rent / income ratio in this selection.",
+      "detail": "Annualized median gross rent divided by median household income is 31.0%. This ratio of medians does not measure individual renter cost burden."
     },
     {
       "id": "fastest-income-growth",
-      "title": "San Diego shows the strongest income increase across the current ACS window.",
-      "detail": "This is a good example of how normalized yearly observations let you compute trends without changing the source fetch logic."
+      "title": "Miami has the largest percentage income increase in this selection.",
+      "detail": "Median household income changed by 26.3% from the first to the last selected observation, without adjustment for inflation."
     },
     {
       "id": "tightest-vacancy",
-      "title": "Seattle currently has the tightest vacancy rate in this metro set.",
-      "detail": "Vacancy rate is an honest ACS-backed supply signal for the MVP, while active listing inventory would require an additional source family."
+      "title": "Seattle has the lowest total housing vacancy rate in this selection.",
+      "detail": "5.4% of housing units are vacant, including seasonal and other vacancies. This is not the rental vacancy rate or active listing inventory."
     }
   ]
 }

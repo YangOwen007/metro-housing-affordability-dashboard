@@ -8,6 +8,12 @@ tsconfig.tsbuildinfo
 # Environment files
 .env
 .env.local
+.env.*
+!.env.example
+*.log
+.test-build/
+.review-checkout/
+.vercel/
 
 # Prisma local database artifacts
 prisma/dev.db
@@ -16,6 +22,7 @@ prisma/dev.db-journal
 # Python caches
 __pycache__
 *.pyc
+*.json.tmp
 
 # OS files
 .DS_Store

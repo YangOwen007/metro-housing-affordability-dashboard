@@ -2,33 +2,43 @@
   "name": "housing-rent-trends-dashboard",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run_tests.mjs",
+    "test:database": "node tests/database.integration.mjs",
+    "security:scan": "node scripts/scan_secrets.mjs",
     "setup:check": "node scripts/check_setup.mjs",
     "deploy:check": "node scripts/check_deploy_ready.mjs",
     "db:generate": "node scripts/run_prisma_command.mjs generate",
     "db:push": "node scripts/run_prisma_command.mjs db push",
+    "db:migrate": "node scripts/run_prisma_command.mjs migrate deploy",
     "db:import": "node scripts/import_dashboard_to_db.mjs",
-    "data:refresh": "C:/Users/centu/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe scripts/fetch_housing_data.py",
+    "data:refresh": "python scripts/fetch_housing_data.py",
     "data:refresh:ci": "python scripts/fetch_housing_data.py"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.0",
-    "next": "^15.0.0",
+    "@prisma/client": "^6.19.3",
+    "next": "^15.5.27",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0",
-    "prisma": "^6.0.0",
+    "eslint-config-next": "^15.5.27",
+    "prisma": "^6.19.3",
     "typescript": "^5.7.0"
   }
 }
