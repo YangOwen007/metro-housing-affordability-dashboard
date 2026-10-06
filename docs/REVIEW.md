@@ -36,6 +36,8 @@ Three remaining concerns: dependency advisories, an unverified hosting/refresh i
 
 The CI security job intentionally fails on high findings. Runtime reachability was not exhaustively assessed. Recharts 2 and ESLint 9 also emit support/deprecation warnings; plan measured upgrades rather than assuming that upgrading major versions is harmless.
 
+Published verification: [CI run for `9fe2c5f`](https://github.com/YangOwen007/metro-housing-affordability-dashboard/actions/runs/37429337476) completed with **check: success**, **database: success**, and **security: failure**. The security failure is the unresolved audit above, not a hidden or bypassed check.
+
 ## Verification evidence
 
 Before: `next lint`, `tsc --noEmit`, `next build` passed. Homepage was static and first-load JavaScript was approximately 209 kB. No automated tests existed.
